@@ -39,7 +39,7 @@ public class WebAuthnService {
         this.userSession = userSession;
 
         rpIdentity = RelyingPartyIdentity.builder()
-                .id("localhost")  // Set this to a parent domain that covers all subdomains
+                .id("webauthn.dokku1.parttio.org")  // Set this to a parent domain that covers all subdomains
                 // where users' credentials should be valid
                 .name("Vaadin WebAuthn Example")
                 .build();
