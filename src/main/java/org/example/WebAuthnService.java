@@ -41,7 +41,7 @@ public class WebAuthnService {
         // The main purpose of this demo is that it can be launched locally.
         // "localhost" domain has exceptions in browser -> no https required etc 💪
         String domain = "localhost";
-        if(System.getenv("CNB_BUILDPACK_ID") != null) {
+        if(System.getProperty("os.name").toLowerCase().contains("linux")) {
             // a public deployment of this example
             domain = "webauthn.dokku1.parttio.org";
         }
