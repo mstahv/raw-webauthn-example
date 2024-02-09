@@ -8,15 +8,14 @@ import com.yubico.webauthn.RegistrationResult;
 import com.yubico.webauthn.RelyingParty;
 import com.yubico.webauthn.StartAssertionOptions;
 import com.yubico.webauthn.StartRegistrationOptions;
-import com.yubico.webauthn.data.AuthenticatorAssertionResponse;
 import com.yubico.webauthn.data.AuthenticatorAttestationResponse;
 import com.yubico.webauthn.data.ByteArray;
-import com.yubico.webauthn.data.ClientAssertionExtensionOutputs;
 import com.yubico.webauthn.data.ClientRegistrationExtensionOutputs;
 import com.yubico.webauthn.data.PublicKeyCredential;
 import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
 import com.yubico.webauthn.data.RelyingPartyIdentity;
 import com.yubico.webauthn.data.UserIdentity;
+import com.yubico.webauthn.data.UserVerificationRequirement;
 import com.yubico.webauthn.exception.AssertionFailedException;
 import com.yubico.webauthn.exception.RegistrationFailedException;
 import org.springframework.stereotype.Service;
@@ -34,26 +33,45 @@ public class WebAuthnService {
     private final UserSession userSession;
     Random random = new Random();
 
-    public WebAuthnService(InMemoryRegistrationRepository storage, UserSession userSession) {
-        this.repository = storage;
+    public WebAuthnService(InMemoryRegistrationRepository repository, UserSession userSession) {
+        // repository is our "in memory database", our "user database"
+        this.repository = repository;
         this.userSession = userSession;
 
+        // The main purpose of this demo is that it can be launched locally.
+        // "localhost" domain has exceptions in browser -> no https required etc 💪
+        String domain = "localhost";
+        if(System.getenv("CNB_BUILDPACK_ID") != null) {
+            // a public deployment of this example
+            domain = "webauthn.dokku1.parttio.org";
+        }
+
         rpIdentity = RelyingPartyIdentity.builder()
-                .id("webauthn.dokku1.parttio.org")  // Set this to a parent domain that covers all subdomains
+                .id(domain)  // Set this to a parent domain that covers all subdomains
                 // where users' credentials should be valid
                 .name("Vaadin WebAuthn Example")
                 .build();
 
         rp = RelyingParty.builder()
                 .identity(rpIdentity)
-                .credentialRepository(storage)
+                .credentialRepository(repository)
                 .allowOriginPort(true)
                 .build();
 
     }
 
+    public AssertionRequest startReauthentication() {
+        return rp.startAssertion(StartAssertionOptions.builder()
+                        // only allow currently logged in username
+                        .username(userSession.getUsername())
+                        .userVerification(UserVerificationRequirement.REQUIRED)
+                .build());
+    }
+
     public AssertionRequest startAssertion() {
-        return rp.startAssertion(StartAssertionOptions.builder().build());
+        return rp.startAssertion(StartAssertionOptions.builder()
+                .userVerification(UserVerificationRequirement.PREFERRED)
+                .build());
     }
 
     public PublicKeyCredentialCreationOptions startRegistration(String usernameValue) {
@@ -122,6 +140,6 @@ public class WebAuthnService {
     }
 
     public List<String> findKnownUsers() {
-        return repository.findKnonwnUsers();
+        return repository.findKnownUsers();
     }
 }

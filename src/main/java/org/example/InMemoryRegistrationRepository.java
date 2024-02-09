@@ -84,7 +84,7 @@ public class InMemoryRegistrationRepository implements CredentialRepository {
         usernameToKey.computeIfAbsent(username, k -> new HashSet<>()).add(keyId);
     }
 
-    public List<String> findKnonwnUsers() {
+    public List<String> findKnownUsers() {
         return usernameToCredential.keySet().stream().toList();
     }
 }
