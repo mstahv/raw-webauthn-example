@@ -16,7 +16,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-// TODO clean this s%#t
+/**
+ * This is a minimal "in-memory DB" for users and their passkeys.
+ * For this demo app this is slightly overkill as they users can have
+ * only one passkey.
+ * <p>See Yubico's docs for more information.</p>
+ */
+// TODO clean this
 @Service
 public class InMemoryRegistrationRepository implements CredentialRepository {
 

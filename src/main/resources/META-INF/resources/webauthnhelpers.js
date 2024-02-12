@@ -1,3 +1,5 @@
+// Note, there are actual JS libraries doing these same things
+// but skipping those to avoid front-end build
 window.fb64 = base64url => {
     const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
     const binStr = window.atob(base64);
@@ -23,7 +25,7 @@ window.fromB64Cred = c => {
     }
 };
 // Serializes credentials data needed on the server to JSON
-window.credentialJsonToServer = cred => {
+window.createCredentialJsonForServer = cred => {
     const c = {};
     c.id = cred.id;
     c.type = cred.type;

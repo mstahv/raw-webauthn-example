@@ -24,24 +24,34 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * A service class that mostly uses Yubico's Java WebAuthn library.
+ * <p>
+ * In this demo app we have only passkey based logins, one per users,
+ * and users can pick up any unique username when registering. Although
+ * real life setup is rarely this simple, especially for existing systems,
+ * the example should help to figure out how WebAuthn works. Code mostly
+ * derived from Yubico's docs.
+ * </p>
+ * This service is used primarily via {@link WebAuthnSession} that works
+ * between the UI, browser's WebAuthn JS API and this service (~ the "backend").
+ */
 @Service
 public class WebAuthnService {
 
     private final RelyingPartyIdentity rpIdentity;
     private final RelyingParty rp;
     private final InMemoryRegistrationRepository repository;
-    private final UserSession userSession;
     Random random = new Random();
 
-    public WebAuthnService(InMemoryRegistrationRepository repository, UserSession userSession) {
+    public WebAuthnService(InMemoryRegistrationRepository repository) {
         // repository is our "in memory database", our "user database"
         this.repository = repository;
-        this.userSession = userSession;
 
         // The main purpose of this demo is that it can be launched locally.
         // "localhost" domain has exceptions in browser -> no https required etc 💪
         String domain = "localhost";
-        if(System.getProperty("os.name").toLowerCase().contains("linux")) {
+        if (System.getProperty("os.name").toLowerCase().contains("linux")) {
             // a public deployment of this example
             domain = "webauthn.dokku1.parttio.org";
         }
@@ -60,11 +70,11 @@ public class WebAuthnService {
 
     }
 
-    public AssertionRequest startReauthentication() {
+    public AssertionRequest startReauthentication(String username) {
         return rp.startAssertion(StartAssertionOptions.builder()
-                        // only allow currently logged in username
-                        .username(userSession.getUsername())
-                        .userVerification(UserVerificationRequirement.REQUIRED)
+                // only allow currently logged-in username
+                .username(username)
+                .userVerification(UserVerificationRequirement.REQUIRED)
                 .build());
     }
 
@@ -96,46 +106,32 @@ public class WebAuthnService {
         return new ByteArray(bytes);
     }
 
-    public void finishLogin(AssertionRequest assertionRequest, String publicKeyCredentialJson) {
-        try {
-            var response = PublicKeyCredential.parseAssertionResponseJson(publicKeyCredentialJson);
-            AssertionResult assertionResult = rp.finishAssertion(FinishAssertionOptions.builder()
-                    .request(assertionRequest)
-                    .response(response)
-                    .build());
-            userSession.setUser(assertionResult.getUsername());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (AssertionFailedException e) {
-            throw new RuntimeException(e);
-        }
-
+    public String finishAssertion(AssertionRequest assertionRequest, String publicKeyCredentialJson) throws IOException, AssertionFailedException {
+        var response = PublicKeyCredential.parseAssertionResponseJson(publicKeyCredentialJson);
+        AssertionResult assertionResult = rp.finishAssertion(FinishAssertionOptions.builder()
+                .request(assertionRequest)
+                .response(response)
+                .build());
+        return assertionResult.getUsername();
     }
 
-    public RegistrationResult finishRegistration(PublicKeyCredentialCreationOptions creationOptions, String publicKeyCredentialJson) {
-        try {
-            PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> pkc = PublicKeyCredential.parseRegistrationResponseJson(publicKeyCredentialJson);
-            RegistrationResult registrationResult = rp.finishRegistration(FinishRegistrationOptions.builder()
-                    .request(creationOptions)  // The PublicKeyCredentialCreationOptions from startRegistration above
-                    // NOTE: Must be stored in server memory or otherwise protected against tampering
-                    .response(pkc)
-                    .build());
+    public RegistrationResult finishRegistration(PublicKeyCredentialCreationOptions creationOptions, String publicKeyCredentialJson) throws RegistrationFailedException, IOException {
+        PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> pkc = PublicKeyCredential.parseRegistrationResponseJson(publicKeyCredentialJson);
+        RegistrationResult registrationResult = rp.finishRegistration(FinishRegistrationOptions.builder()
+                .request(creationOptions)  // The PublicKeyCredentialCreationOptions from startRegistration above
+                // NOTE: Must be stored in server memory or otherwise protected against tampering
+                .response(pkc)
+                .build());
 
-            repository.storeCredential(
-                    creationOptions.getUser().getName(),
-                    creationOptions.getUser().getId(),
-                    registrationResult.getKeyId(),
-                    registrationResult.getPublicKeyCose(),
-                    pkc.getResponse().getAttestation(),
-                    pkc.getResponse().getClientDataJSON()
-            );
-            userSession.setUser(creationOptions.getUser().getName());
-            return registrationResult;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (RegistrationFailedException e) {
-            throw new RuntimeException(e);
-        }
+        repository.storeCredential(
+                creationOptions.getUser().getName(),
+                creationOptions.getUser().getId(),
+                registrationResult.getKeyId(),
+                registrationResult.getPublicKeyCose(),
+                pkc.getResponse().getAttestation(),
+                pkc.getResponse().getClientDataJSON()
+        );
+        return registrationResult;
 
     }
 

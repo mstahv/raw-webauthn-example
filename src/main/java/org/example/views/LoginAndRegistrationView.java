@@ -1,132 +1,97 @@
 package org.example.views;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.dependency.JavaScript;
-import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Hr;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.dom.Style;
 import com.vaadin.flow.router.Route;
-import com.yubico.webauthn.AssertionRequest;
-import com.yubico.webauthn.RegistrationResult;
-import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
-import org.example.UserSession;
 import org.example.WebAuthnService;
-import org.vaadin.firitin.util.JsPromise;
+import org.example.WebAuthnSession;
+import org.vaadin.firitin.components.textfield.VTextField;
 
-import java.util.List;
-
-@Route("")
-// Publish JS helpers to base64 encoded/decode binary data.
-// There are good JS libraries to do this, but keeping deps to minimum
-@JavaScript("context://webauthnhelpers.js")
+@Route("login")
 public class LoginAndRegistrationView extends VerticalLayout {
 
-    private final WebAuthnService webAuthnService;
-    private final UserSession userSession;
-
-    public LoginAndRegistrationView(WebAuthnService webAuthnService, UserSession userSession) {
-        this.webAuthnService = webAuthnService;
-        this.userSession = userSession;
+    public LoginAndRegistrationView(
+            WebAuthnService webAuthnService,
+            WebAuthnSession webAuthnSession,
+            UserListing userListing) {
         setAlignItems(Alignment.CENTER);
-        init();
-    }
+        getStyle().setTextAlign(Style.TextAlign.CENTER);
 
-    private void init() {
-        removeAll();
-        if(userSession.isLoggedIn()) {
-            add(new H1("You are logged in as " + userSession.getUsername()));
+        add(new H1("WebAuthn }> in Java"));
+        add(new Paragraph("""
+        This is a demo/example application implementing WebAuthn/Passkey based
+        authentication and authorization from atoms, with Vaadin and 
+        java-webauthn-server(https://github.com/Yubico/java-webauthn-server) 
+        for the server-side implementation. The purpose of the example is explain how 
+        WebAuthn/Passkeys work in modern browsers and how to easily consume 
+        Promise based JavaScript browser APIs with Vaadin (utilizes JsPromise from
+        Viritin add-on for simplified asynchronous browsers API access).
+        """));
+        add(new Paragraph("""
+        For real business apps, it would be most often a better solution to
+        utilize WebAuthn/Passkeys "indirectly", by for example dropping in
+        KeyCloak and/or Spring Security. Less security related code in your
+        app, the better.
+        """));
 
-            add(new Button("TODO: Try important action, will request re-authentication", e-> {
-                // TODO, like login, but force user
-                // Completable future that will be executed if
-                // re-auth ok
-                var assertionRequest = webAuthnService.startReauthentication();
-                assertLogin(assertionRequest);
-            }));
-
-            add(new Button("Logout", e-> {
-                userSession.logout();
-                init();
-            }));
-
-        } else {
-            add(new H1("Log in to test login :-)"));
-
-            Button login = new Button("Login with WebAuthn with existing passkey", e -> {
-                AssertionRequest assertionRequest = webAuthnService.startAssertion();
-                assertLogin(assertionRequest);
+        Button login = new Button("Already registered? Login!", e -> {
+            webAuthnSession.login().thenAccept(username -> {
+                UI.getCurrent().navigate(MainView.class);
+                Notification.show("Welcome back %s!".formatted(username));
+            }).exceptionally(ex -> {
+                Notification.show("Login failed: " + ex.getMessage());
+                return null;
             });
+        });
 
-            TextField username = new TextField("Username");
-            Button register = new Button("Register!", e -> {
-                try {
-                    PublicKeyCredentialCreationOptions creationOptions = webAuthnService.startRegistration(username.getValue());
-                    String json = creationOptions.toCredentialsCreateJson();
-                    JsPromise.resolveString("""
-                    var c = %s;
-                    fromB64Cred(c);
-                    navigator.credentials.create(c).then(cred => {
-                      resolve(credentialJsonToServer(cred));
-                    });
-                    """.formatted(json)).thenAccept(credsJson -> {
-                        RegistrationResult registrationResult = webAuthnService.finishRegistration(creationOptions, credsJson);
-                        init();
-                    });
-                } catch (Exception ex) {
-                    Notification.show("Failed to create user. " + ex.getMessage());
-                }
+        TextField username = new VTextField("Username");
+        Button register = new Button("Register!", e -> {
+            webAuthnSession.registerUser(username.getValue()).thenAccept(v -> {
+                Notification.show("Username %s succesfully registered. Welcome!"
+                        .formatted(username.getValue()))
+                        .setPosition(Notification.Position.MIDDLE);
+                UI.getCurrent().navigate(MainView.class);
+            }).exceptionally(ex -> {
+                Notification.show("Failed to create user. " + ex.getMessage());
+                return null;
             });
+        });
+        register.setEnabled(false);
+        username.setManualValidation(true);
+        username.addValueChangeListener(e -> {
+            boolean isValid = !e.getValue().isEmpty() && e.getValue().matches("[a-zA-Z0-9]+");
+            boolean userExists = webAuthnSession.userExists(username.getValue());
+            if (isValid) {
+                if (userExists)
+                    username.setErrorMessage("User name already exists!");
+                else username.setErrorMessage(null);
+            } else {
+                username.setErrorMessage("Only alphanumeric characters allowed!");
+                username.setInvalid(true);
+            }
+            username.setInvalid(!isValid || userExists);
+            register.setEnabled(isValid && !userExists);
+        });
 
-            add(login, new Hr(), new H3("Register new user/passkey"), username, register);
-        }
-        listKnownUsers();
-    }
-
-    private void listKnownUsers() {
-        List<String> knownUsers = webAuthnService.findKnownUsers();
-        Grid<String> grid = new Grid<>();
-        grid.setWidth("200px");
-        grid.addColumn(s -> s);
-        grid.setItems(knownUsers);
-        grid.getStyle().setMargin("0 auto"); // TODO figure out why not centered
-        add(new Hr(), new H3("Known users (no duplicates allowed)"), grid);
-    }
-
-    private void assertLogin(AssertionRequest assertionRequest) {
-        try {
-            String credJson = assertionRequest.toCredentialsGetJson();
-            JsPromise.resolveString("""
-                // raw credential JSON (binary fields b64d)
-                var c = %s;
-                // convert binary fields from b64 to bytes
-                fromB64Cred(c);
-                navigator.credentials.get(c).then(cred => {                
-                    resolve(credentialJsonToServer(cred));
-                });
-                """.formatted(credJson))
-                .thenAccept(credentialJson -> {
-                    try {
-                        if(userSession.isLoggedIn()) {
-                            // re-authentication
-                            webAuthnService.finishLogin(assertionRequest, credentialJson);
-                            Notification.show("Very important task is not safe to execute");
-                        } else {
-                            webAuthnService.finishLogin(assertionRequest, credentialJson);
-                            init();
-                        }
-                    } catch (Exception e) {
-                        Notification.show("Login Failed! (The in-memory test server forgot your passkey 🤔, clear old passkeys from your device and create a new test user)").setPosition(Notification.Position.MIDDLE);
-                        e.printStackTrace();
-                    }
-            });
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-
+        add(
+                new Hr(),
+                new H3("Start here, register as new user with a passkey"),
+                new Paragraph("Choose a username of your choice below. Clicking register will then ignite a process using WebAuthn API to generate a passkey for this service."),
+                username,
+                register,
+                new Hr(),
+                new H3("Already registered?"),
+                new Paragraph("Clicking the button below will start a login process and you will be prompted for an existing passkey."),
+                login,
+                new Hr(),
+                userListing);
     }
 }
