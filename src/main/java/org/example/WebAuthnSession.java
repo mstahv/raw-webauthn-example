@@ -69,17 +69,17 @@ public class WebAuthnSession {
             // with the WebAuthn API, once user has created one, it will be
             // passed back to the server side for validation/persistence
             String json = creationOptions.toCredentialsCreateJson();
-            // Evaluate an async JS code in the browser within a JS Promise
-            // and return the value back to the server
-            JsPromise.resolveString("""
+            // Evaluate an async JS code in the browser within an async JS method
+            // and return the value as JSON back to the server
+            JsPromise.computeString("""
             // the JSON gets to the c variable
             var c = %s;
             // convert base64 fields to bytes
             fromB64Cred(c);
-            navigator.credentials.create(c).then(cred => {
-              // send the generated passkey data back to server
-              resolve(createCredentialJsonForServer(cred));
-            });
+            // trigger the browser dialog to generate passkey
+            const cred = await navigator.credentials.create(c);
+            // send the generated passkey data back to server as return value
+            return createCredentialJsonForServer(cred);
             """.formatted(json)).thenAccept(credsJson -> {
                 // credsJson is the stringified/base64 JSON from the WebAuthn API
 
@@ -122,14 +122,13 @@ public class WebAuthnSession {
             String credJson = assertionRequest.toCredentialsGetJson();
             // Use the WebAuthn API in the browser and return the
             // credentials from it back to the server
-            JsPromise.resolveString("""
+            JsPromise.computeString("""
             // raw credential JSON (binary fields b64d)
             var c = %s;
             // convert binary fields from base64 to bytes
             fromB64Cred(c);
-            navigator.credentials.get(c).then(cred => {                
-                resolve(createCredentialJsonForServer(cred));
-            });
+            const cred = await navigator.credentials.get(c);
+            return createCredentialJsonForServer(cred);
             """.formatted(credJson)).thenAccept(credentialJson -> {
                 try {
                     // Let the Yubico's library to parse the response and
@@ -173,14 +172,13 @@ public class WebAuthnSession {
         AssertionRequest assertionRequest = webAuthnService.startReauthentication(username);
         try {
             String credJson = assertionRequest.toCredentialsGetJson();
-            JsPromise.resolveString("""
+            JsPromise.computeString("""
             // raw credential JSON (binary fields b64d)
             var c = %s;
             // convert binary fields from b64 to bytes
             fromB64Cred(c);
-            navigator.credentials.get(c).then(cred => {                
-                resolve(createCredentialJsonForServer(cred));
-            });
+            const cred = await navigator.credentials.get(c);
+            return createCredentialJsonForServer(cred);
             """.formatted(credJson)).thenAccept(credentialJson -> {
                 try {
                     webAuthnService.finishAssertion(assertionRequest, credentialJson);
