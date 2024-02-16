@@ -13,6 +13,7 @@ import com.vaadin.flow.dom.Style;
 import com.vaadin.flow.router.Route;
 import org.example.WebAuthnService;
 import org.example.WebAuthnSession;
+import org.vaadin.firitin.components.RichText;
 import org.vaadin.firitin.components.textfield.VTextField;
 
 @Route("login")
@@ -25,21 +26,23 @@ public class LoginAndRegistrationView extends VerticalLayout {
         setAlignItems(Alignment.CENTER);
         getStyle().setTextAlign(Style.TextAlign.CENTER);
 
-        add(new H1("WebAuthn }> in Java"));
-        add(new Paragraph("""
-        This is a demo/example application implementing WebAuthn/Passkey based
-        authentication and authorization from atoms, with Vaadin and 
-        java-webauthn-server(https://github.com/Yubico/java-webauthn-server) 
+        add(new RichText().withMarkDown("""
+        # WebAuthn }> in Java
+            
+        This is a demo/example application implementing [WebAuthn/Passkey](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) 
+        based authentication and authorization from atoms, with Vaadin and 
+        [java-webauthn-server](https://github.com/Yubico/java-webauthn-server) 
         for the server-side implementation. The purpose of the example is explain how 
         WebAuthn/Passkeys work in modern browsers and how to easily consume 
         Promise based JavaScript browser APIs with Vaadin (utilizes JsPromise from
-        Viritin add-on for simplified asynchronous browsers API access).
-        """));
-        add(new Paragraph("""
+        the [Viritin add-on](https://vaadin.com/directory/component/flow-viritin) 
+        for simplified asynchronous browsers API access).            
+        
         For real business apps, it would be most often a better solution to
         utilize WebAuthn/Passkeys "indirectly", by for example dropping in
-        KeyCloak and/or Spring Security. Less security related code in your
-        app, the better.
+        [KeyCloak](https://www.keycloak.org) for identity management and utilizing
+        it with Spring Security (in case of a Spring Boot app). Less own security 
+        related code in your app, the better.
         """));
 
         Button login = new Button("Already registered? Login!", e -> {
@@ -84,7 +87,7 @@ public class LoginAndRegistrationView extends VerticalLayout {
         add(
                 new Hr(),
                 new H3("Start here, register as new user with a passkey"),
-                new Paragraph("Choose a username of your choice below. Clicking register will then ignite a process using WebAuthn API to generate a passkey for this service."),
+                new Paragraph("Choose a username of your choice below. Clicking register will then ignite a process using WebAuthn API to generate a passkey for this service. Note, the app only stores passkeys in-memory, so don't expect your account created today will exist next week 🧸."),
                 username,
                 register,
                 new Hr(),
