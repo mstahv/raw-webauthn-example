@@ -29,20 +29,23 @@ public class LoginAndRegistrationView extends VerticalLayout {
         add(new RichText().withMarkDown("""
         # WebAuthn }> in Java
             
-        This is a demo/example application implementing [WebAuthn/Passkey](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) 
+        This is a [demo/example application (check the source code!)](https://github.com/mstahv/raw-webauthn-example) 
+        implementing [WebAuthn/Passkey](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) 
         based authentication and authorization from atoms, with Vaadin and 
         [java-webauthn-server](https://github.com/Yubico/java-webauthn-server) 
-        for the server-side implementation. The purpose of the example is explain how 
-        WebAuthn/Passkeys work in modern browsers and how to easily consume 
-        Promise based JavaScript browser APIs with Vaadin (utilizes JsPromise from
-        the [Viritin add-on](https://vaadin.com/directory/component/flow-viritin) 
-        for simplified asynchronous browsers API access).            
-        
-        For real business apps, it would be most often a better solution to
+        for the server-side implementation. 
+                
+        This demo app is for learning and understanding the concepts. For real 
+        business apps, it would be most often a better solution to
         utilize WebAuthn/Passkeys "indirectly", by for example dropping in
         [KeyCloak](https://www.keycloak.org) for identity management and utilizing
         it with Spring Security (in case of a Spring Boot app). Less own security 
         related code in your app, the better.
+        
+        *This demo is best consumed locally from your IDE: run, debug, modify, play & learn!* 
+        
+        [Check out the 
+        source code via GitHub.](https://github.com/mstahv/raw-webauthn-example)
         """));
 
         Button login = new Button("Already registered? Login!", e -> {
