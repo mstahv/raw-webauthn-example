@@ -18,9 +18,9 @@ The [WebAuthnSession](https://github.com/mstahv/raw-webauthn-example/blob/main/s
 
 A part of WebAuthnSession that might interest Vaadin developers who don't care about WebAuthn itself, is how we call the asynchronous browser(JavaScript) API from the server side Java code. For example here:
 
-https://github.com/mstahv/raw-webauthn-example/blob/fea74226ac61ce63906d4d1eba6242a77c91d4e7/src/main/java/org/example/WebAuthnSession.java#L175-L189
+https://github.com/mstahv/raw-webauthn-example/blob/fea74226ac61ce63906d4d1eba6242a77c91d4e7/src/main/java/org/example/WebAuthnSession.java#L172-L188
 
-We use the `await` syntax in the script body. This essentially makes the rest of the script body a Promise and the final 'resolved' value of the script is returned to the server asynchronously as a CompletableFuture. In this case there is a user interaction happening between (and most likely for example fingerprint scanning) before the finishAssertion method is called. Currently, the await keyword needs Viritin add-on, but [a PR was recently merged](https://github.com/vaadin/flow/pull/18698) to land similar feature to the core.
+We use the `await` syntax in the script body. This essentially makes the rest of the script body a Promise and the final 'resolved' value of the script is returned to the server asynchronously as a CompletableFuture. In this case there is a user interaction happening between (and most likely for example fingerprint scanning) before the finishAssertion method is called. Currently, the await keyword needs Viritin add-on, but [a PR was recently merged](https://github.com/vaadin/flow/pull/18698) to land a similar feature to the core in Vaadin 24.4.0.
 
 With the help of CompletableFuture and `Promise`s/`async` keyword on the JS side, the final API used in the UI code becomes clean and maintainable, event though it contains asynchronous logic spread over to both client and the server. Here is what happens e.g. when clicking the register button:
 
