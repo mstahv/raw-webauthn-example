@@ -24,8 +24,7 @@ We use the `await` syntax in the script body. This essentially makes the rest of
 
 With the help of CompletableFuture and `Promise`s/`async` keyword on the JS side, the final API used in the UI code becomes clean and maintainable, event though it contains asynchronous logic spread over to both client and the server. Here is what happens e.g. when clicking the register button:
 
-https://github.com/mstahv/raw-webauthn-example/blob/main/src/main/java/org/example/views/LoginAndRegistrationView.java#L56-L66
-
+https://github.com/mstahv/raw-webauthn-example/blob/a40fe26fdb23454cc9f426625927b5b470e33153/src/main/java/org/example/views/LoginAndRegistrationView.java#L58-L69
 
 The server side configuration and `com.yubico:webauthn-server-core` usage is in [WebAuthnService](https://github.com/mstahv/raw-webauthn-example/blob/main/src/main/java/org/example/WebAuthnService.java). I built it pretty much by copy-pasting from Yubico's documentation. The Yubico's API needs a CredentialsRepository implementation, which I quickly hacked together as an [in-memory implementation](https://github.com/mstahv/raw-webauthn-example/blob/main/src/main/java/org/example/InMemoryRegistrationRepository.java). That interface may first appear overly complex, but that is due to (mostly valid) assumption that a user account might have multiple passkeys and/or other authentication mechanisms. In a real-world app, this part probably needs the most thinking: how to store the public keys in your existing user database. The nice part is that, as opposed to storing passwords in a database, it is much harder to disastrously fail to store passkeys in a non-secure way. Leaking out the public key part that the browser shares with your server, wouldn't be an issue at all.
 
