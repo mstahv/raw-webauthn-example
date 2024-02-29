@@ -55,9 +55,9 @@ public class WebAuthnSession {
      */
     public CompletableFuture<Void> registerUser(String username) {
         injectWebAuthnHelperJavaScripts();
+
         // Returning a void CompletableFuture that the UI can use
         // to execute logic after successful registration
-        var future = new CompletableFuture<Void>();
         try {
             // Uses Yubico's server library to start a username registration
             // process. The creation options contains e.g. the username &
@@ -71,7 +71,7 @@ public class WebAuthnSession {
             String json = creationOptions.toCredentialsCreateJson();
             // Evaluate an async JS code in the browser within an async JS method
             // and return the value as JSON back to the server
-            JsPromise.computeString("""
+            return JsPromise.computeString("""
             // the JSON gets to the c variable
             var c = %s;
             // convert base64 fields to bytes
@@ -91,15 +91,15 @@ public class WebAuthnSession {
                     webAuthnService.finishRegistration(creationOptions, credsJson);
                     // save the username to session and complete the future
                     setUser(creationOptions.getUser().getName());
-                    future.complete(null);
-                } catch (RegistrationFailedException | IOException ex1) {
-                    future.completeExceptionally(ex1);
+                } catch (RegistrationFailedException e) {
+                    throw new RuntimeException(e);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             });
         } catch (JsonProcessingException ex) {
-            future.completeExceptionally(ex);
+            throw new RuntimeException();
         }
-        return future;
     }
 
 
@@ -113,7 +113,6 @@ public class WebAuthnSession {
      */
     public CompletableFuture<String> login() {
         injectWebAuthnHelperJavaScripts();
-        var userNameFuture = new CompletableFuture<String>();
         // Uses Yubico's server library to create a challenge etc that is
         // needed to start the login process in the browser
         AssertionRequest assertionRequest = webAuthnService.startAssertion();
@@ -122,14 +121,14 @@ public class WebAuthnSession {
             String credJson = assertionRequest.toCredentialsGetJson();
             // Use the WebAuthn API in the browser and return the
             // credentials from it back to the server
-            JsPromise.computeString("""
+            return JsPromise.computeString("""
             // raw credential JSON (binary fields b64d)
             var c = %s;
             // convert binary fields from base64 to bytes
             fromB64Cred(c);
             const cred = await navigator.credentials.get(c);
             return createCredentialJsonForServer(cred);
-            """.formatted(credJson)).thenAccept(credentialJson -> {
+            """.formatted(credJson)).thenApply(credentialJson -> {
                 try {
                     // Let the Yubico's library to parse the response and
                     // do the cryptographic checks this is a response to our
@@ -140,15 +139,14 @@ public class WebAuthnSession {
                     // Save the username to session
                     setUser(username);
                     // also return it for the UI in the CompletableFuture
-                    userNameFuture.complete(username);
+                    return username;
                 } catch (IOException | AssertionFailedException e) {
-                    userNameFuture.completeExceptionally(e);
+                    throw new RuntimeException(e);
                 }
             });
         } catch (JsonProcessingException e) {
-            userNameFuture.completeExceptionally(e);
+            throw new RuntimeException(e);
         }
-        return userNameFuture;
     }
 
     /**
@@ -168,11 +166,10 @@ public class WebAuthnSession {
     public CompletableFuture<Void> runReauthenticated() {
         Objects.requireNonNull(username);
         injectWebAuthnHelperJavaScripts();
-        var future = new CompletableFuture<Void>();
         AssertionRequest assertionRequest = webAuthnService.startReauthentication(username);
         try {
             String credJson = assertionRequest.toCredentialsGetJson();
-            JsPromise.computeString("""
+            return JsPromise.computeString("""
             // raw credential JSON (binary fields b64d)
             var c = %s;
             // convert binary fields from b64 to bytes
@@ -182,15 +179,13 @@ public class WebAuthnSession {
             """.formatted(credJson)).thenAccept(credentialJson -> {
                 try {
                     webAuthnService.finishAssertion(assertionRequest, credentialJson);
-                    future.complete(null);
                 } catch (Exception e) {
-                    future.completeExceptionally(e);
+                    throw new RuntimeException(e);
                 }
             });
         } catch (JsonProcessingException e) {
-            future.completeExceptionally(e);
+            throw new RuntimeException(e);
         }
-        return future;
     }
 
     public boolean userExists(String username) {
